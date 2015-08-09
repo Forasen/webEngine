@@ -1,0 +1,10 @@
+INC := ./  /usr/include
+LIB := -L ./../../../../../jsoncpp-src-0.5.0/libs/linux-gcc-4.8 -ljson
+OBJS := ./json_client.cpp
+CXX := g++
+EXE := json_client
+CXXFLAGS := -std=c++11 $(addprefix -I, $(INC)) $(LIB)
+$(EXE) : $(OBJS)
+	$(CXX) -o $@ $< $(CXXFLAGS)
+clean: 
+	rm -rf $(EXE)

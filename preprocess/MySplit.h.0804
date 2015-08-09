@@ -1,0 +1,2092 @@
+/*********************************************
+> File  : MySplit.h
+> Author: NewYork
+> Mail  : 2287794993@qq.com 
+> Time  : Mon 20 Jul 2015 07:20:58 PM CST
+********************************************/
+
+#ifndef _MYSPLIT_H
+#define _MYSPLIT_H
+
+#include<iostream>
+#include<stdlib.h>
+#include<iterator>
+#include<string.h>
+#include<fstream>
+#include<sstream>
+#include<set>
+#include<vector>
+#include<map>
+#include<sys/types.h>
+//#include "./seg_split.h"
+//#include "./wordSplit.h"
+std::string wordSplit(std::string);
+
+#if 0
+#define JIEBA_DICT_FILE "./jieba/cppjieba/dict/jieba.dict.utf8"
+#define HMM_DICT_FILE "./jieba/cppjieba/dict/hmm_model.utf8"
+#define USER_DICT_FILE "./jieba/cppjieba/dict/user.dict.utf8"
+#endif
+class MySplit
+{
+    public:
+    MySplit()
+    {
+    }
+    ~MySplit()
+    {
+    }
+#if 0
+    std::string wordSplit(std::string& str)
+    {
+MixSegment seg(JIEBA_DICT_FILE, HMM_DICT_FILE, USER_DICT_FILE);
+        std::vector<std::string> split_words;
+        seg.cut(str, split_words);
+        std::string sResult;
+        for(auto it: split_words)
+        {
+            sResult += it;
+            sResult += " ";
+        }
+        return sResult;
+    }
+#endif
+        /*对每篇文章进行分词*/
+        void pageSplit()
+        {
+            /*打开offset.lib文件*/
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            std::ifstream input_offset("./test_generate_page/offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            //ifstream input_ripepage("./tmp_page/ripepage.lib");
+            std::string line_offset;
+
+            /*提取offset.lib文件中的数据*/
+            while(getline(input_offset, line_offset))
+            {
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss(line_offset);
+                ss >> num_str;
+                ss >> offset_str;
+                ss >> size_str;
+                /*将提取出的字符串转换为数字以便于数值计算*/
+                int num_int = atoi(num_str.c_str());
+                int offset_int = atoi(offset_str.c_str());
+                int size_int = atoi(size_str.c_str());
+                /*依据offset.lib偏移文件对ripepage.lib的文件进行提取*/
+                std::ifstream input_ripepage("./test_generate_page/ripepage.lib");
+                //std::ifstream input_ripepage("./generate_page/ripepage.lib");
+                if(!input_ripepage)
+                {
+                    perror("input_ripepage");
+                    exit(-1);
+                }
+                /*将开始读文件的位置置于offset.lib中对应的offset_int处准备读取数据*/
+                input_ripepage.seekg(offset_int, std::fstream::beg);
+                /*定位到该篇文章的结尾处，作为读入结束的标记*/
+                int curr_end_mark = offset_int + size_int;
+
+                std::string curr_content;
+                std::string real_curr_content;
+                std::string line_content;
+
+                int content_size = 0;
+                std::vector<std::string> tmp_vec_content;
+                int line_cnt = 0;
+                /*读取ripepage.lib，之所以+19是由于最后的<\docment><\doc>所占的字节数，没必要读取*/
+                while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+                {
+                    /*line_cnt用于忽略前面的网页标记行*/
+                    line_cnt++;
+                    curr_content += line_content;//当前读取到的文件内容
+                    //content_size += curr_content.size();//当前读取到的文件内容的大小
+                    content_size += line_content.size();//当前读取到的文件内容的大小
+                    if(content_size == size_int)
+                    {
+                        std::cout<<"content_size==size_int->break!(inside the MySplit.h)"<<std::endl;
+                        break;
+                    }
+
+                    std::string real_line_content;//文章的真实待读取内容
+                    /*从第6行开始是文章的真实内容*/
+                    if(line_cnt >= 6)
+                    {
+                        for(auto it: line_content)
+                        {
+                            if(!isspace(it))//因为是对该篇文章进行分词，故必须去除空格，
+                            //以避免文章的上下行造成的不连续现象导致一个词可能出现的不连续的情况
+                            {
+                                real_line_content += it;//读取每一个汉字
+                            }
+                        }
+                        /*将读取到的内容（无空格），存放到一个vector里面（按行进行存放，但不存放换行符）*/
+                        tmp_vec_content.push_back(real_line_content);
+                    }
+                }
+        //std::map<int, std::vector<std::string> > m_map_stoplist;
+        /*将读取到的文章和对应的标记存放到一个map里面*/
+        m_map_stoplist.insert({num_int, tmp_vec_content});
+
+                /*
+                if(num_int % 2000 == 0)
+                {
+                auto it_end = m_map_stoplist.find(num_int);
+                if(it_end != m_map_stoplist.end())
+                {
+                std::cout<<"article_num="<<it_end->first<<std::endl;
+                for(auto it_2: it_end->second)
+                std::cout<<it_2<<std::endl;
+                }
+                }
+                */
+
+#if 0
+for(auto it: tmp_vec_content)
+{
+    std::cout<<it;
+}    
+std::cout<<std::endl<<std::endl;
+#endif
+
+
+                //input_ripepage.close();
+                }
+                //std::cout<<"+++++++++++A@@@@@@@@@%%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@"<<std::endl;
+#if 0
+                for(auto it_first: m_map_stoplist)
+                {
+                    //std::cout<<"(inside for(auto it_first: m_map_stoplist))num_int="<<num_int<<std::endl;
+                    std::cout<<"article num="<<it_first.first<<std::endl;
+                    for(auto it_second: it_first.second)
+                    {
+                        std::cout<<it_second;
+                    }
+                    std::cout<<std::endl;
+                }
+#endif
+                //std::vector<std::string>& wordSplit(std::string& str)
+                /*循环对每篇文章进行分词*/
+                int for_cnt = 0;
+
+            clock_t begin, begin1;
+            clock_t end;
+            begin = clock();
+            begin1 = clock();
+            for(auto& it_first: m_map_stoplist)
+            {
+                for_cnt++;
+                //std::cout<<"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"<<std::endl;
+                //std::cout<<"(inside for(auto it_first: m_map_stoplist))num_int="<<num_int<<std::endl;
+                //std::cout<<"article num="<<it_first.first<<std::endl;
+                std::string tmp_article;
+                /*每次提取整篇文章，而不是一行为的是加快速度*/
+                for(auto it_second: it_first.second)
+                {
+                    tmp_article += it_second;
+                }
+                //std::cout<<"string display"<<std::endl;
+                //std::cout<<tmp_article;
+                //std::cout<<std::endl;
+
+                /*利用分词系统进行分词*/
+                std::string tmp_res = wordSplit(tmp_article);
+
+                /*
+                std::vector<std::string> new_split_words;
+                seg.cut(tmp_article, new_split_words);
+                std::string tmp_res;
+                for(auto it: new_split_words)
+                {
+                    tmp_res += it;
+                    tmp_res += " ";
+                }
+                */
+
+                /*将刚读取的文本与string流进行关联*/
+                std::stringstream ss_res(tmp_res);
+                std::string tmp_word;
+                //bool is_stopword(std::string aword)
+                std::string tmp_content;
+                //while(ss_res >> tmp_word)
+                //std::cout<<"Enter a word for the large file:";
+                //std::string words;
+                //std::cin>>words;
+                //while(ss_res >> tmp_word)
+                /*去除stopword*/
+                while(ss_res >> tmp_word)
+                {
+                    if(!is_stopword(tmp_word))
+                    {
+                        tmp_content += tmp_word; 
+                        tmp_content += " ";//字间加入空行是为了以后方便提出单个词语
+                    }
+                }
+                it_first.second.clear();//清空m_map_stoplist中vector里面的内容。为该文章的分词准备存储空间
+                //it_first.second.push_back(tmp_res);
+                //!!std::map<int, std::vector<std::string> > m_map_stoplist;
+                it_first.second.push_back(tmp_content);//载入刚得到的文章所有分词
+            /*
+            for(auto it_inside: it_first.second)
+            {
+            std::cout<<tmp_content<<std::endl;
+            }
+            */
+
+                //std::cout<<tmp_res<<std::endl;
+                //for(auto it_tmp: tmp_vec)
+                //{
+                //std::cout<<it_tmp<< " ";
+                //}
+                //std::vector<std::string> tmp_vec = wordSplit(tmp_article);
+                //tmp_vec.insert(wordSplit(tmp_article).begin(), wordSplit(tmp_article.end()));
+                //std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+                //std::cout<<tmp_res<<std::endl;
+                //std::cout<<std::endl;
+                //m_map_stoplist[it_first.first] = wordSplit(tmp_article);
+                if(for_cnt % 20 == 0)
+                {
+                    end = clock();
+                    double time1 = (double)(end-begin) / CLOCKS_PER_SEC;
+                    begin = end;
+                    //std::cout<<"inside the for(auto& it_first: m_map_stoplist) "<<std::endl;
+                    std::cout<<"handle for_cnt="<<for_cnt<<", TIME = "<<time1<<std::endl;
+                }
+            }
+            clock_t end_2;
+            end_2 = clock();
+            double time_for = (double)(end_2-begin1) / CLOCKS_PER_SEC;
+            std::cout<<"TOTAL TIME(for circulation)="<<time_for<<std::endl;
+
+            std::cout<<"m_map_stoplist.size(已分词的文章总数)="<<m_map_stoplist.size()<<std::endl;
+            //std::cout<<"for_cnt="<<for_cnt<<std::endl;
+            /*分词后的文章*/
+            /*
+               for(auto it_first: m_map_stoplist)
+               {
+               if(it_first.first % 2000 == 0)
+               {
+               auto it_end = m_map_stoplist.find(it_first.first);
+               if(it_end != m_map_stoplist.end())
+               {
+               std::cout<<"article_num="<<it_end->first<<std::endl;
+               for(auto it_2: it_end->second)
+               std::cout<<it_2<<std::endl;
+               }
+               }
+               }
+               */
+        }
+        /****************两个相同的函数的分割线*****************/
+        void new_pageSplit()
+        {
+            std::cout<<"9999999999999999999999999999999999new_pageSplit()"<<std::endl;
+            //ifstream input_offset("./tmp_page/offset.lib");
+
+
+            /*打开offset.lib文件*/
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            std::ifstream input_offset("./test_generate_page/new_offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            //ifstream input_ripepage("./tmp_page/ripepage.lib");
+            std::string line_offset;
+
+            /*提取offset.lib文件中的数据*/
+            int cnt_tmp = 0;
+            while(getline(input_offset, line_offset))
+            {
+                std::cout<<"_+_+_+_+_+_+inside while()"<<std::endl;
+                cnt_tmp++;
+                //std::cout<<"getline(input_offset, line_offset)"<<std::endl;
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss(line_offset);
+                ss >> num_str;
+                ss >> offset_str;
+                ss >> size_str;
+                std::cout<<"num_str:"<<num_str<<", "<<"offset_str:"<<offset_str<<", "<<"size_str:"<<size_str<<std::endl;
+
+                /*将提取出的字符串转换为数字以便于数值计算*/
+                int num_int = atoi(num_str.c_str());
+                int offset_int = atoi(offset_str.c_str());
+                int size_int = atoi(size_str.c_str());
+
+
+                /*依据offset.lib便宜文件对ripepage.lib的文件进行提取*/
+                std::ifstream input_ripepage("./test_generate_page/new_ripepage.lib");
+                //std::ifstream input_ripepage("./generate_page/ripepage.lib");
+                if(!input_ripepage)
+                {
+                    perror("input_ripepage");
+                    exit(-1);
+                }
+                /*将开始读文件的位置置于offset.lib中对应的offset_int处准备读取数据*/
+                input_ripepage.seekg(offset_int, std::fstream::beg);
+                /*定位到该篇文章的结尾处，作为读入结束的标记*/
+                int curr_end_mark = offset_int + size_int;
+                //bool not_first_flag = false;
+
+                std::string curr_content;
+                std::string real_curr_content;
+                std::string line_content;
+
+                int content_size = 0;
+                std::vector<std::string> tmp_vec_content;
+                //while(getline(input_ripepage, line_content) && (input_ripepage.tellg()!=curr_end_mark))
+                int line_cnt = 0;
+                //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+                //std::cout<<"curr_end_mark="<<curr_end_mark<<std::endl;
+
+                /*读取ripepage.lib，之所以+19是由于最后的<\docment><\doc>所占的字节数，没必要读取*/
+                while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+                    //while(getline(input_ripepage, line_content))
+                {
+                    /*line_cnt用于忽略前面的网页标记行*/
+                    line_cnt++;
+                    //std::cout<<"line_cnt="<<line_cnt<<std::endl;
+                    //std::cout<<"getline(input_ripepage, line_content)"<<std::endl;
+                    //std::cout<<curr_content<<std::endl;
+                    //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+#if 0
+                    if(not_first_flag)
+                    {
+                        curr_content += "\n";
+                    }
+#endif
+                    curr_content += line_content;//当前读取到的文件内容
+                    //content_size += curr_content.size();//当前读取到的文件内容的大小
+                    content_size += line_content.size();//当前读取到的文件内容的大小
+
+                    if(content_size == size_int)
+                    {
+                        std::cout<<"content_size==size_int->break!(inside the MySplit.h)"<<std::endl;
+                        break;
+                    }
+
+                    std::string real_line_content;//文章的真实待读取内容
+                    /*从第6行开始是文章的真实内容*/
+                    if(line_cnt >= 6)
+                    {
+                        for(auto it: line_content)
+                        {
+                            if(!isspace(it))//因为是对该篇文章进行分词，故必须去除空格，
+                                //以避免文章的上下行造成的不连续现象导致一个词可能出现的不连续的情况
+                            {
+                                real_line_content += it;//读取每一个汉字
+                            }
+                        }
+                        /*将读取到的内容（无空格），存放到一个vector里面（按行进行存放，但不存放换行符）*/
+                        tmp_vec_content.push_back(real_line_content);
+                        //real_curr_content += line_content;
+                    }
+                }
+                //std::map<int, std::vector<std::string> > m_map_stoplist;
+                /*将读取到的文章和对应的标记存放到一个map里面*/
+                std::cout<<"before m_map_stoplist.insert888888888888888888888888888%%num_int="<<num_int<<", "<<"tmp_vec_content.size="<<tmp_vec_content.size()<<std::endl;
+                m_map_stoplist.insert({num_int, tmp_vec_content});
+
+                /*
+                   if(num_int % 2000 == 0)
+                   {
+                   auto it_end = m_map_stoplist.find(num_int);
+                   if(it_end != m_map_stoplist.end())
+                   {
+                   std::cout<<"article_num="<<it_end->first<<std::endl;
+                   for(auto it_2: it_end->second)
+                   std::cout<<it_2<<std::endl;
+                   }
+                   }
+                   */
+
+#if 0
+                for(auto it: tmp_vec_content)
+                {
+                    std::cout<<it;
+                }    
+                std::cout<<std::endl<<std::endl;
+#endif
+
+
+                //input_ripepage.close();
+            }
+            //std::cout<<"+++++++++++A@@@@@@@@@%%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@"<<std::endl;
+#if 0
+            for(auto it_first: new_m_map_stoplist)
+            {
+                //std::cout<<"(inside for(auto it_first: m_map_stoplist))num_int="<<num_int<<std::endl;
+                std::cout<<"article num="<<it_first.first<<std::endl;
+                for(auto it_second: it_first.second)
+                {
+                    std::cout<<it_second;
+                }
+                std::cout<<std::endl;
+            }
+#endif
+            //std::vector<std::string>& wordSplit(std::string& str)
+            /*循环对每篇文章进行分词*/
+            int for_cnt = 0;
+
+            clock_t begin, begin1;
+            clock_t end;
+            begin = clock();
+            begin1 = clock();
+            //std::cout<<"++++++>in new_getMapSplit() new_m_map_stoplist.size="<<new_m_map_stoplist.size()<<std::endl;
+            for(auto& it_first: new_m_map_stoplist)
+            {
+                for_cnt++;
+                //std::cout<<"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"<<std::endl;
+                //std::cout<<"(inside for(auto it_first: m_map_stoplist))num_int="<<num_int<<std::endl;
+                //std::cout<<"article num="<<it_first.first<<std::endl;
+                std::string tmp_article;
+                /*每次提取整篇文章，而不是一行为的是加快速度*/
+                for(auto it_second: it_first.second)
+                {
+                    tmp_article += it_second;
+                }
+                //std::cout<<"string display"<<std::endl;
+                //std::cout<<tmp_article;
+                //std::cout<<std::endl;
+
+                /*利用分词系统进行分词*/
+                std::string tmp_res = wordSplit(tmp_article);
+                /*将刚读取的文本与string流进行关联*/
+                std::stringstream ss_res(tmp_res);
+                std::string tmp_word;
+                //bool is_stopword(std::string aword)
+                std::string tmp_content;
+                //while(ss_res >> tmp_word)
+                //std::cout<<"Enter a word for the large file:";
+                //std::string words;
+                //std::cin>>words;
+                //while(ss_res >> tmp_word)
+                /*去除stopword*/
+                while(ss_res >> tmp_word)
+                {
+                    if(!is_stopword(tmp_word))
+                    {
+                        tmp_content += tmp_word; 
+                        tmp_content += " ";//字间加入空行是为了以后方便提出单个词语
+                    }
+                }
+                it_first.second.clear();//清空m_map_stoplist中vector里面的内容。为该文章的分词准备存储空间
+                //it_first.second.push_back(tmp_res);
+                //!!std::map<int, std::vector<std::string> > m_map_stoplist;
+                it_first.second.push_back(tmp_content);//载入刚得到的文章所有分词
+                /*
+                   for(auto it_inside: it_first.second)
+                   {
+                   std::cout<<tmp_content<<std::endl;
+                   }
+                   */
+
+                //std::cout<<tmp_res<<std::endl;
+                //for(auto it_tmp: tmp_vec)
+                //{
+                //std::cout<<it_tmp<< " ";
+                //}
+                //std::vector<std::string> tmp_vec = wordSplit(tmp_article);
+                //tmp_vec.insert(wordSplit(tmp_article).begin(), wordSplit(tmp_article.end()));
+                //std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+                //std::cout<<tmp_res<<std::endl;
+                //std::cout<<std::endl;
+                //m_map_stoplist[it_first.first] = wordSplit(tmp_article);
+                if(for_cnt % 20 == 0)
+                {
+                    end = clock();
+                    double time1 = (double)(end-begin) / CLOCKS_PER_SEC;
+                    begin = end;
+                    //std::cout<<"inside the for(auto& it_first: m_map_stoplist) "<<std::endl;
+                    std::cout<<"handle for_cnt="<<for_cnt<<", TIME = "<<time1<<std::endl;
+                }
+            }
+            clock_t end_2;
+            end_2 = clock();
+            double time_for = (double)(end_2-begin1) / CLOCKS_PER_SEC;
+            std::cout<<"TOTAL TIME(for circulation)="<<time_for<<std::endl;
+
+            std::cout<<"new_m_map_stoplist.size(已分词的文章总数)="<<new_m_map_stoplist.size()<<std::endl;
+            //std::cout<<"for_cnt="<<for_cnt<<std::endl;
+            /*分词后的文章*/
+            /*
+               for(auto it_first: m_map_stoplist)
+               {
+               if(it_first.first % 2000 == 0)
+               {
+               auto it_end = m_map_stoplist.find(it_first.first);
+               if(it_end != m_map_stoplist.end())
+               {
+               std::cout<<"article_num="<<it_end->first<<std::endl;
+               for(auto it_2: it_end->second)
+               std::cout<<it_2<<std::endl;
+               }
+               }
+               }
+               */
+        }
+        //void removeDup()
+        void extractNewPage()
+        {
+            //std::cout<<"display_map()"<<std::endl;
+            //std::cout<<"calling void display_map()*************$$$$$$$$$$$$$$$$$$"<<std::endl;
+            //std::unordered_map<int, std::unordered_map<std::string, int> >& statistic_word = getStatisticWord();  
+
+            //99999std::map<int, std::vector<std::pair<std::string, int> > > statistic_word = getStatisticWord();  
+            /*只存放文章序号和对应的topK即可，忽略freq*/
+            //99999std::map<int, std::set<std::string> > map_com;
+            //std::map<std::pair<int, bool>, std::set<std::string> > map_com;
+            //std::string unflag = "unhandled";
+            //std::string flag = "handled";
+
+            //std::map<int, std::unordered_map<std::string, int> > tmp_map_article;
+#if 0
+            for(auto it: statistic_word)
+            {
+                std::set<std::string> set_com;
+                //std::map<std::string, int> tmp_map_word;
+                //std::cout<<"article_no:"<<it.first<<std::endl; 
+
+                for(auto it_1: it.second)
+                {
+                    //tmp_map_word.insert(make_pair(it_1.first, it_1.second));
+                    //std::cout<<it_1.first<<"\t"<<it_1.second<<std::endl;
+                    set_com.insert(it_1.first);
+                }
+
+                //set_com.insert(unflag);
+                /*
+                   for(auto it: set_com)
+                   {
+                   std::cout<<it<<",";
+                   }
+                   std::cout<<std::endl;
+                   */
+                /*
+                   for(auto it_2: tmp_map_word)
+                   {
+                   std::cout<<it_2.first<<"\t"<<it_2.second<<std::endl;
+                   }
+                   */
+                //article1  tmp_article;
+                //tmp_article.article_num = it.first;
+                //tmp_article.article_flag = false;
+                //bool tmp_flag = false;
+                //std::pair<int, bool> tmp_pair(std::make_pair(it.first, tmp_flag));
+                map_com[it.first] = set_com;
+                //map_com.insert(std::make_pair(tmp_article, set_com));
+            }
+#endif
+
+            //auto it11=map_com.begin();
+            //auto it11_end_pre = --it11->second.end();
+            //int for_1_cnt = 0;
+
+            //for(auto it11=map_com.begin(); it11!=map_com.end() && (!(it11->first.second)); it11++)
+            /*循环对每两篇文章进行topK的对比*/
+#if 0
+            for(auto it11=map_com.begin(); it11!=map_com.end(); it11++)
+            {
+                //for_1_cnt++;
+
+                //auto it22_end_pre = --it22->second.end();
+                //int for_2_cnt = 0;
+
+                auto tmp_it = it11;
+                auto it22 = ++tmp_it;
+                //for(; it22!=map_com.end() && (!(it22->first.second)); it22++)
+                if(it22 != map_com.end())
+                {
+                    //for(; it22!=map_com.end(); it22++)
+                    //for(; it22!=map_com.end();)
+                    while(it22 != map_com.end())
+                    {
+                        std::vector<std::string> tmp_vec_intersection;//存放两篇文章的交集
+
+#if 0
+                        //std::cout<<"before tmp_vec_intersection.size="<<tmp_vec_intersection.size()<<std::endl;
+                        //for_2_cnt++;
+                        std::cout<<"article_num="<<it11->first<<" @VS@ article_num="<<it22->first<<std::endl;
+
+                        std::cout<<"it11->second...";
+                        for(auto it55: it11->second)
+                        {
+                            std::cout<<it55<<", ";
+                        }
+                        std::cout<<std::endl;
+                        std::cout<<"it22->second...";
+                        for(auto it66: it22->second)
+                        {
+                            std::cout<<it66<<", ";
+                        }
+                        std::cout<<std::endl;
+#endif
+                        /*获取交集*/
+                        std::set_intersection(it11->second.begin(), it11->second.end(),
+                                it22->second.begin(), it22->second.end(),
+                                std::back_inserter(tmp_vec_intersection));
+                        //if(tmp_vec_intersection.size() >= 1)
+                        /*判断是否大于等于6*/
+                        if(tmp_vec_intersection.size() >= 6)
+                        {
+#if 0
+                            std::cout<<"calling : if(tmp_vec_intersection.size()>=1) and intersection.size="<<tmp_vec_intersection.size()<<std::endl;
+                            for(auto it_vec: tmp_vec_intersection)
+                            {
+                                std::cout<<it_vec<<",";
+                            }
+                            std::cout<<std::endl;
+                            std::cout<<"---------------------------------"<<std::endl;
+                            if(it22!=map_com.end())
+                            {
+                                std::cout<<"map_com.erase called!"<<std::endl;
+                                std::cout<<"article_num->:"<<it22->first;
+                                for(auto it33: it22->second)
+                                {
+                                    std::cout<<it33<<", ";
+                                }
+                                std::cout<<"HAS BEEN DEL!"<<std::endl;
+
+                                //it22 = map_com.erase(it22);
+                                auto it_tmp = map_com.erase(it22);
+                                it22 = it_tmp;
+                                //it22->first.second = true;
+                            }
+#endif
+                            it22 = map_com.erase(it22);//去除雷同文章
+                        }
+                        else
+                        {
+                            it22++;
+                        }
+                        //std::cout<<"for_2_cnt="<<for_2_cnt<<std::endl;
+                    }
+                }
+            }
+#endif
+            //std::cout<<"for_1_cnt="<<for_1_cnt<<std::endl;
+            //std::cout<<"map_com.size="<<map_com.size()<<std::endl;
+
+#if 0
+            std::cout<<"AFTER erase^^^^^^^^^^^^^^^^^^^"<<std::endl;
+            for(auto it1: map_com)
+            {
+                std::cout<<"article_num="<<it1.first<<std::endl;
+                for(auto it2: it1.second)
+                {
+                    std::cout<<it2<<",";
+                }
+                std::cout<<std::endl;
+                std::cout<<"---------------------------------------"<<std::endl;
+            }
+#endif
+            //%%%%%%%%%%%%%%%std::map<int, std::set<std::string> > map_com;
+
+            //std::cout<<"AFTER erase^^^OFFSET^^^^^^OFFSET^^^^^^^^^^"<<std::endl;
+
+            /*获取new_offset.lib和new_ripepage.lib*/
+            std::cout<<"calling function: extractNewPage()"<<std::endl;
+            std::ifstream input_offset("./test_generate_page/offset.lib");
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            std::string line_offset;
+
+            //99999std::map<int, std::pair<int, int> > tmp_map_offset;
+
+            int remove_cnt = 0;
+            while(getline(input_offset, line_offset))
+            {
+                //std::cout<<"getline(input_offset, line_offset)"<<std::endl;
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss(line_offset);
+                ss >> num_str;
+                ss >> offset_str;
+                ss >> size_str;
+
+                int num_int = atoi(num_str.c_str());
+                int offset_int = atoi(offset_str.c_str());
+                int size_int = atoi(size_str.c_str());
+
+                //99999std::pair<int, int> tmp_pair(std::make_pair(offset_int, size_int));
+                //99999tmp_map_offset[num_int] = tmp_pair;
+#if 0//99999
+                //for(auto it1: map_com)
+                for(auto it1: tmp_map_offset)
+                {
+                    //auto del_offset = tmp_map_offset.find(it1.first);
+                    auto del_offset = map_com.find(it1.first);
+                    //if(del_offset != tmp_map_offset.end())
+                    if(del_offset == map_com.end())
+                    {
+                        //tmp_map_offset.erase(del_offset->first); 
+                        tmp_map_offset.erase(it1.first); 
+                    }
+                    //std::cout<<"(inside while(getline))num_int="<<num_int<<std::endl;
+                }
+#endif
+                //std::map<int, std::pair<int, int> > tmp_map_offset;
+                //std::cout<<"tmp_map_offset.size="<<tmp_map_offset.size()<<std::endl;
+                //int offset_cnt = tmp_map_offset.size();
+                //int offset_cnt = 0;//tmp_map_offset.size();
+#if 0
+                for(auto it_offset: tmp_map_offset)
+                {
+                    //std::cout<<it_offset.first<<"\t"<<it_offset.second.first<<"\t"<<it_offset.second.second<<std::endl;
+                    //std::cout<<offset_cnt<<"\t"<<it_offset.second.first<<"\t"<<it_offset.second.second<<std::endl;
+                    //offset_cnt++;
+                }
+#endif
+                std::vector<std::string> tmp_vec_content;
+                int doc_num = 0;
+                //for(auto it_offset: tmp_map_offset)
+                //{
+                remove_cnt++;
+                //std::cout<<"for(auto it_offset: tmp_map_offset)"<<std::endl;
+
+                //int num_int = atoi(num_str.c_str());
+                //int offset_int = atoi(offset_str.c_str());
+                //int size_int = atoi(size_str.c_str());
+                //std::map<int, std::pair<int, int> > tmp_map_offset;
+                /*
+                   int num_int = it_offset.first;
+                   int offset_int = it_offset.second.first;
+                   int size_int = it_offset.second.second;
+                   */
+
+                std::ifstream input_ripepage("./test_generate_page/ripepage.lib");
+                //std::ifstream input_ripepage("./generate_page/ripepage.lib");
+                if(!input_ripepage)
+                {
+                    perror("input_ripepage");
+                    exit(-1);
+                }
+                input_ripepage.seekg(offset_int, std::fstream::beg);
+                int curr_end_mark = offset_int + size_int;
+                //bool not_first_flag = false;
+                std::string curr_content;
+                std::string real_curr_content;
+                std::string line_content;
+
+                int content_size = 0;
+                //std::vector<std::string> tmp_vec_content;
+                //while(getline(input_ripepage, line_content) && (input_ripepage.tellg()!=curr_end_mark))
+                int line_cnt = 0;
+                //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+                //std::cout<<"curr_end_mark="<<curr_end_mark<<std::endl;
+
+                while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+                    //while(getline(input_ripepage, line_content) && (input_ripepage.tellg()<=curr_end_mark))
+                {
+                    //std::cout<<"while(getline)"<<std::endl;
+                    line_cnt++;
+                    //std::cout<<"line_cnt="<<line_cnt<<std::endl;
+                    //std::cout<<"getline(input_ripepage, line_content)"<<std::endl;
+                    //std::cout<<curr_content<<std::endl;
+                    //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+#if 0
+                    if(not_first_flag)
+                    {
+                        curr_content += "\n";
+                    }
+#endif
+                    curr_content += line_content;
+                    content_size += curr_content.size();
+                    /*
+                       if(content_size == size_int)
+                       {
+                       std::cout<<"content_size==size_int->break!!!!(inside MyRemoveDup.h)!!!"<<std::endl;
+                       break;
+                       }
+                       */
+                    std::string real_line_content;
+#if 1
+                    if(line_cnt == 6)
+                    {
+                        std::cout<<"第6行："<<line_content<<std::endl;
+                    }
+#endif
+                    if(line_cnt >= 6)
+                    {
+
+
+                        for(auto it: line_content)
+                        {
+                            real_line_content += it;
+                            /*
+                               if(!isspace(it))
+                               {
+                               real_line_content += it;
+                               }
+                               */
+                        }
+                        //tmp_vec_content.push_back(real_line_content);
+                        /*ripepage.lib中的第二行是<docid> id </docid>，new_offset.lib要求序号恢复连续
+                         * 所以极为有必要对id进行重置
+                         */
+#if 0//1010101010
+                        if(line_cnt == 2)
+                        {
+                            //std::cout<<"if(line_cnt==2)"<<std::endl;
+                            char ch_str[1024];
+                            char* begin = "<docid>";
+                            char* end = "</docid>";
+
+                            sprintf(ch_str, "%s %d %s\n", begin, doc_num, end);
+                            doc_num++;
+                            real_curr_content += ch_str;
+                            //real_curr_content += "<docid> " + line_cnt + " </docid>\n";
+                            //new_output_ripepage<<"<docid> "<<line_cnt<<" </docid>"<<std::endl;
+                            continue;
+                        }
+#endif
+                        real_curr_content += line_content;
+                        /*不要忘记加入空行，否则很难看*/
+                        if(input_ripepage.tellg()<curr_end_mark)
+                        {
+                            real_curr_content += "\n";//最后一行不要加 
+                        }
+                    }
+                    if(line_cnt == 6)
+                    {
+                        std::cout<<"第6行："<<line_content<<std::endl;
+                    }
+                }
+                //!!显示文章内容
+                if(remove_cnt == 8)
+                {
+                    std::cout<<"real_curr_content: as following...第八(haha)篇\n"<<real_curr_content<<std::endl;
+                }
+                tmp_vec_content.push_back(real_curr_content);//整篇文章一次性加入
+                //std::map<int, std::vector<std::string> > m_map_stoplist;
+                //m_map_stoplist.insert({num_int, tmp_vec_content});
+                //std::cout<<"article_num="<<num_int<<std::endl;
+
+                //}
+            }
+#if 0//99999
+            std::ofstream new_output_ripepage("./test_generate_page/new_ripepage.lib");
+            //std::ofstream new_output_ripepage("./generate_page/new_ripepage.lib");
+            if(!new_output_ripepage)
+            {
+                perror("new_output_ripepage");
+                exit(-1);
+            }
+            ofstream new_output_offset("./test_generate_page/new_offset.lib");
+            //ofstream new_output_offset("./generate_page/new_offset.lib");
+            if(!new_output_offset)
+            {
+                perror("ofstream new_output_offset!");
+                exit(-1);
+            }
+#endif
+            /*
+               output_ripepage<<index_doc;
+               int docsize = index_doc.size();
+               output_offset<<it.first<<"\t"<<docoffset<<"\t"<<docsize<<std::endl;
+            //docoffset = output_ripepage.tellg();
+            docoffset = output_ripepage.tellp();
+            */
+            /*
+               for(auto it_offset: tmp_map_offset)
+               {
+            //std::cout<<it_offset.first<<"\t"<<it_offset.second.first<<"\t"<<it_offset.second.second<<std::endl;
+            std::cout<<offset_cnt<<"\t"<<it_offset.second.first<<"\t"<<it_offset.second.second<<std::endl;
+            }
+            */
+#if 0//99999
+            int tmp_total_size = 0;
+            int tmp_curr_size = 0;
+            int offset_cnt = 0;//tmp_map_offset.size();
+            int line_flag_cnt = 0;
+            for(auto it: tmp_vec_content)
+            {
+                line_flag_cnt++;
+                //std::cout<<"for<auto it: tmp_vec_content>"<<std::endl;
+                tmp_curr_size = it.size();
+                new_output_offset<<offset_cnt<<"\t"<<tmp_total_size<<"\t"<<tmp_curr_size<<std::endl;
+
+                //std::cout<<it<<std::endl; 
+                tmp_total_size += tmp_curr_size;
+                offset_cnt++;
+
+                new_output_ripepage<<it<<std::endl;
+
+            }
+            new_output_ripepage.close();
+            new_output_offset.close();
+#endif
+            //input_scandir.close();
+
+            /***********************************************************************************
+
+              for(auto it1: map_com)
+              {
+
+              std::cout<<"article_num="<<it1.first<<std::endl;
+              for(auto it2: it1.second)
+              {
+              std::cout<<it2<<",";
+              }
+              std::cout<<std::endl;
+              std::cout<<"---------------------------------------"<<std::endl;
+              }
+             ***********************************************************************************/
+
+            //std::cout<<"mZ="<<statistic_word.size()<<std::endl;
+            /*
+               auto itfirst = statistic_word.begin();
+               auto itsecond = itfirst->second.begin();
+               for(; itfirst!=statistic_word.end(); itfirst++)
+               {
+               std::cout<<"article777777777777777777777777777%%%%%%%%%%%%%%%%%%%%%%%%:"<<itfirst->first<<std::endl;
+               std::cout<<"WORD"<<"\t"<<"FREQ"<<std::endl;
+               for(; itsecond!=itfirst->second.end(); itsecond++)
+               {
+               std::cout<<itsecond->first<<"\t"<<itsecond->second<<std::endl;
+               }
+
+               }
+               for(auto it_first: statistic_word)
+               {
+               std::cout<<"article%%%%%%%%%%%%%%%%%%%%%%%%:"<<it_first.first<<std::endl;
+               std::cout<<"WORD"<<"\t"<<"FREQ"<<std::endl;
+               for(auto it_second: it_first.second)
+               {
+               std::cout<<it_second.first<<"\t"<<it_second.second<<std::endl;
+               }
+               }
+               */
+        }
+        void extractNewPage_backup()
+        {
+            //std::cout<<"extractNewPage()"<<std::endl;
+            /*打开offset.lib文件*/
+            //std::ifstream input_offset("./generate_page/new_offset.lib");
+            std::ifstream input_offset("./test_generate_page/new_offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            std::string line_offset;
+            /*提取offset.lib文件中的数据*/
+            int offset_cnt = -1;
+            while(getline(input_offset, line_offset))
+            {
+                offset_cnt++;
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss(line_offset);
+                ss >> num_str;
+                ss >> offset_str;
+                ss >> size_str;
+                //while(ss >> num_str >> offset_str >> size_str)
+                //{
+                /*
+                   std::cout<<"1:num_str"<<num_str<<", "<<"offset_str:"<<offset_str<<", size_str:"<<size_str<<std::endl;
+                   ss >> num_str >>offset_str >> size_str;
+                   std::cout<<"2:num_str"<<num_str<<", "<<"offset_str:"<<offset_str<<", size_str:"<<size_str<<std::endl;
+                   ss >> num_str >>offset_str >> size_str;
+                   std::cout<<"3:num_str"<<num_str<<", "<<"offset_str:"<<offset_str<<", size_str:"<<size_str<<std::endl;
+                   */
+                /*将提取出的字符串转换为数字以便于数值计算*/
+                int num_int = atoi(num_str.c_str());
+                int offset_int = atoi(offset_str.c_str());
+                int size_int = atoi(size_str.c_str());
+                /*依据offset.lib便宜文件对ripepage.lib的文件进行提取*/
+                std::ifstream input_ripepage("./test_generate_page/new_ripepage.lib");
+                //std::ifstream input_ripepage("./generate_page/new_ripepage.lib");
+                if(!input_ripepage)
+                {
+                    perror("input_ripepage");
+                    exit(-1);
+                }
+                /*将开始读文件的位置置于offset.lib中对应的offset_int处准备读取数据*/
+                input_ripepage.seekg(offset_int, std::fstream::beg);
+                /*
+                   int line_tmp_cnt = 0;
+                   if(offset_cnt <= 2)
+                   {
+
+                   std::string tmp_line;
+                   while(getline(input_ripepage, tmp_line))
+                   {
+                   line_tmp_cnt++;
+                   if(line_tmp_cnt == 1)
+                   std::cout<<"tmp_line:"<<tmp_line<<std::endl;
+                   }
+                   }
+                   input_ripepage.seekg(offset_int, std::fstream::beg);
+                   */
+                //if(offset_cnt % 10 == 0)
+                std::cout<<"input_ripepage.tellg="<<input_ripepage.tellg()<<std::endl;
+                /*定位到该篇文章的结尾处，作为读入结束的标记*/
+                int curr_end_mark = offset_int + size_int;
+                std::string curr_content;
+                std::string real_curr_content;
+                std::string line_content;
+
+                int content_size = 0;
+                std::vector<std::string> tmp_vec_content;
+                int line_cnt = 0;
+                /*读取ripepage.lib，之所以+19是由于最后的<\docment><\doc>所占的字节数，没必要读取*/
+                while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+                {
+                    /*
+                       if(offset_cnt <= 2 && line_cnt ==  0)
+                       {
+                       std::cout<<"input_ripepage.tellg="<<input_ripepage.tellg()<<std::endl;
+                       std::cout<<"the first line->line_content:"<<line_content<<std::endl;
+                       }
+                       */
+                    /*
+                       std::cout<<"line_content:"<<line_content<<std::endl;
+                       if(offset_cnt >= 3)
+                       while(1);
+                       */
+                    /*
+                       if(offset_cnt == 0)
+                       {
+                       std::cout<<"line_content(文章的第一行offset_cnt=0):"<<line_content<<std::endl;
+                       }
+                       */
+                    /*line_cnt用于忽略前面的网页标记行*/
+                    line_cnt++;
+                    curr_content += line_content;//当前读取到的文件内容
+                    content_size += line_content.size();//当前读取到的文件内容的大小
+                    if(content_size == size_int)
+                    {
+                        std::cout<<"content_size==size_int->break!(inside the MySplit.h)"<<std::endl;
+                        break;
+                    }
+                    std::string real_line_content;//文章的真实待读取内容
+                    /*从第6行开始是文章的真实内容*/
+                    if(line_cnt >= 6)
+                        //if(line_cnt == 6)
+                    {
+                        //if(offset_cnt % 10 == 0)
+                        /*
+                           if(offset_cnt <= 2)
+                           {
+                           std::cout<<"前两篇文章..."<<std::endl;
+                           std::cout<<"(第6行)line_content:"<<line_content<<std::endl;
+                           std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^^^^"<<std::endl;
+                           }
+                           */
+                        //for(auto it: line_content)
+                        //{
+                        /*
+                           if(!isspace(it))//因为是对该篇文章进行分词，故必须去除空格，
+                        //以避免文章的上下行造成的不连续现象导致一个词可能出现的不连续的情况
+                        {
+                        real_line_content += it;//读取每一个汉字
+                        }
+                        */
+                        std::stringstream ss(line_content);
+                        std::string word;
+                        while(ss >> word)
+                        {
+                            real_line_content += word;
+                        }
+                        //}
+                        /*将读取到的内容（无空格），存放到一个vector里面（按行进行存放，但不存放换行符）*/
+                        tmp_vec_content.push_back(real_line_content);
+                        //real_curr_content += line_content;
+                    }
+                }
+                //!!std::map<int, std::vector<std::string> > m_map_stoplist;
+                /*将读取到的文章和对应的标记存放到一个map里面*/
+                m_map_stoplist.insert({num_int, tmp_vec_content});
+                input_ripepage.close();
+#if 1
+                for(auto it: tmp_vec_content)
+                {
+                    std::cout<<it;
+                }    
+                std::cout<<std::endl<<std::endl;
+#endif
+                //}
+            }
+            std::cout<<"分词前的文章"<<std::endl;
+            for(auto it: m_map_stoplist)
+            {
+                if(it.first % 10 == 0)
+                {
+
+                    std::cout<<"article_num="<<it.first<<std::endl;
+                    for(auto it2: it.second)
+                    {
+                        std::cout<<it2;
+                    }
+                    std::cout<<std::endl;
+                    std::cout<<"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"<<std::endl;
+                }
+            }
+            //std::cout<<"+++++++++++A@@@@@@@@@%%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@"<<std::endl;
+#if 0
+            for(auto it_first: m_map_stoplist)
+            {
+                //std::cout<<"(inside for(auto it_first: m_map_stoplist))num_int="<<num_int<<std::endl;
+                std::cout<<"article num="<<it_first.first<<std::endl;
+                for(auto it_second: it_first.second)
+                {
+                    std::cout<<it_second;
+                }
+                std::cout<<std::endl;
+            }
+#endif
+            /*循环对每篇文章进行分词*/
+            int for_cnt = 0;
+            /*
+               clock_t begin, begin1;
+               clock_t end;
+               begin = clock();
+               begin1 = clock();
+               */
+            for(auto& it_first: m_map_stoplist)
+            {
+                for_cnt++;
+                std::string tmp_article;
+                /*每次提取整篇文章，而不是一行为的是加快速度*/
+                for(auto it_second: it_first.second)
+                {
+                    tmp_article += it_second;
+                }
+                //std::cout<<"string display"<<std::endl;
+                //std::cout<<tmp_article;
+                //std::cout<<std::endl;
+                /*利用分词系统进行分词*/
+                std::string tmp_res = wordSplit(tmp_article);
+                /*将刚读取的文本与string流进行关联*/
+                std::stringstream ss_res(tmp_res);
+                std::string tmp_word;
+                //bool is_stopword(std::string aword)
+                std::string tmp_content;
+                /*去除stopword*/
+                while(ss_res >> tmp_word)
+                {
+                    if(!is_stopword(tmp_word))
+                    {
+                        tmp_content += tmp_word; 
+                        tmp_content += " ";//字间加入空行是为了以后方便提出单个词语
+                    }
+                }
+                it_first.second.clear();//清空m_map_stoplist中vector里面的内容。为该文章的分词准备存储空间
+                //!!std::map<int, std::vector<std::string> > m_map_stoplist;
+                it_first.second.push_back(tmp_content);//载入刚得到的文章所有分词
+                /*
+                   for(auto it_inside: it_first.second)
+                   {
+                   std::cout<<tmp_content<<std::endl;
+                   }
+                   */
+
+                /*
+                   if(for_cnt % 20 == 0)
+                   {
+                   end = clock();
+                   double time1 = (double)(end-begin) / CLOCKS_PER_SEC;
+                   begin = end;
+                //std::cout<<"inside the for(auto& it_first: m_map_stoplist) "<<std::endl;
+                std::cout<<"handle for_cnt="<<for_cnt<<", TIME = "<<time1<<std::endl;
+                }
+                */
+            }
+            /*
+               std::cout<<"分词后的文章"<<std::endl;
+               for(auto it: m_map_stoplist)
+               {
+               if(it.first % 10 == 0)
+               {
+
+               std::cout<<"article_num="<<it.first<<std::endl;
+               for(auto it2: it.second)
+               {
+               std::cout<<it2;
+               }
+               std::cout<<std::endl;
+               std::cout<<"---------------"<<std::endl;
+               }
+               }
+               */
+            /*
+               clock_t end_2;
+               end_2 = clock();
+               double time_for = (double)(end_2-begin1) / CLOCKS_PER_SEC;
+               std::cout<<"TOTAL TIME(for circulation)="<<time_for<<std::endl;
+
+               std::cout<<"m_map_stoplist.size(已分词的文章总数)="<<m_map_stoplist.size()<<std::endl;
+            //std::cout<<"for_cnt="<<for_cnt<<std::endl;
+            */
+            /*分词后的文章*/
+            /*
+               for(auto it_first: m_map_stoplist)
+               {
+               if(it_first.first % 2000 == 0)
+               {
+               auto it_end = m_map_stoplist.find(it_first.first);
+               if(it_end != m_map_stoplist.end())
+               {
+               std::cout<<"article_num="<<it_end->first<<std::endl;
+               for(auto it_2: it_end->second)
+               std::cout<<it_2<<std::endl;
+               }
+               }
+               }
+               */
+        }
+
+        /*获得每篇文章的分词结果，间接访问m_map_stoplist以提高安全性*/
+        std::map<int, std::vector<std::string> >& getMapSplit()
+        {
+            pageSplit();
+            return m_map_stoplist;
+        }
+        /*获得每篇去重后文章的分词结果，间接访问m_map_stoplist以提高安全性*/
+        std::map<int, std::vector<std::string> > new_getMapSplit()
+        {
+            //pageSplit();
+            new_pageSplit();
+            std::cout<<"in new_getMapSplit()$$new_m_map_stoplist.size="<<new_m_map_stoplist.size()<<std::endl;
+            return new_m_map_stoplist;
+        }
+
+        std::string backup_getSummary(int docidSummary, int maxSummarySize, 
+                                      std::vector<std::string> vec_words,
+                                     int number)
+            /*vec_words为待查询的摘要的关键单词，必须确保单词在搜索序列中出现的顺序*/
+            /*maxSummarySize为返回的查询文章的行数*/
+        {
+            /*打开offset.lib文件*/
+            //std::ifstream input_original_offset("./test_generate_page/offset.lib");
+            std::ifstream input_original_offset("./generate_page/offset.lib");
+            if(!input_original_offset)
+            {
+                perror("input_original_offset");
+                exit(-1);
+            }
+            std::map<int, std::pair<int, int> > map_original_offset;
+            int num_int;
+            int offset_int;
+            int size_int;
+            while(input_original_offset >> num_int >> offset_int>> size_int)
+            {
+                map_original_offset[num_int] = std::make_pair(offset_int, size_int);
+            }
+            /*打开new_offset.lib文件*/
+            std::ifstream input_new_offset("./generate_page/new_offset.lib");
+            //std::ifstream input_new_offset("./test_generate_page/new_offset.lib");
+            if(!input_new_offset)
+            {
+                perror("input_new_offset");
+                exit(-1);
+            }
+            std::map<int, std::pair<int, int> > map_new_offset;
+            while(input_original_offset >> num_int >> offset_int>> size_int)
+            {
+                map_new_offset[num_int] = std::make_pair(offset_int, size_int);
+            }
+
+            std::string line_offset;
+
+            /*提取new_offset.lib文件中的数据*/
+            //!!std::map<int, std::pair<int, int> > tmp_map_offset;//用于存放new_offset.lib的结果
+
+            //std::cout<<"111111111111111111111111111111111111111111"<<std::endl;
+            //std::cout<<"num_int="<<num_int<<", offset_int="<<offset_int<<", size_int="<<size_int<<std::endl;
+            auto it_new_original = map_original_offset.find(docidSummary);
+            if(it_new_original == map_original_offset.end())
+            {
+                std::cout<<"Sorry! the new_offset docid not exist int original offset.lib"<<std::endl;
+                std::cout<<"error: not found the docidSummary!"<<std::endl;
+                exit(-1);
+            }
+            std::string curr_content;
+            std::string real_curr_content;
+            std::string line_content;
+            int line_cnt = 0;//!!行计数器
+            //std::ifstream input_ripepage("./test_generate_page/ripepage.lib");
+            std::ifstream input_ripepage("./generate_page/ripepage.lib");
+            if(!input_ripepage)
+            {
+                perror("input_ripepage(getSummary())");
+                exit(-1);
+            }
+
+            input_ripepage.seekg(it_new_original->second.first, std::fstream::beg);
+            int curr_end_mark = it_new_original->second.first + it_new_original->second.second;
+            while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+            {
+                line_cnt++;
+                std::string real_line_content;
+                for(auto it: line_content)
+                {
+                    if(!isspace(it))
+                    {
+                        real_line_content += it;
+                    }
+                }
+                if(line_cnt >= 6)
+                {
+                    real_curr_content += real_line_content;
+                }
+#if 0
+                if(line_cnt == 6)
+                {
+                    std::cout<<"第6行为："<<line_content<<"\n"<<"文章序号为："<<(doc_cnt-1)<<std::endl;
+                }
+#endif
+            }
+
+            /*
+               std::vector<std::string> tmp_vec_content;
+               tmp_vec_content.push_back(real_curr_content);
+               */
+            //std::cout<<"before pre_m_map_stoplist.size++++++real_curr_content:"<<real_curr_content<<"*****"<<std::endl;
+            //std::cout<<"tmp_vec_content.size="<<tmp_vec_content.size()<<std::endl;
+
+
+
+            //!!pre_m_map_stoplist[it_new_original->first] = tmp_vec_content;
+
+            //std::cout<<"pre_m_map_stoplist.size="<<pre_m_map_stoplist.size()<<std::endl;
+            /*************************************************************分割线*/
+
+            /*对整篇文章进行分词，便于识别句子*/
+            std::string docstr_split = wordSplit(real_curr_content);
+            //!!bool is_stopsentence(std::string aword)
+            bool start_flag = false;
+            bool end_flag = false;
+            std::stringstream ss_doc_str(docstr_split);
+            std::string doc_str_word;
+            std::string line_sentence;//存储临时句子
+            std::set<std::string> tmp_words;//存储临时单词
+            std::vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            bool first_word = false;
+            while(ss_doc_str >> doc_str_word)
+            {
+                first_word = true;
+                std::string tmp_unuseful;
+                /*放在最前面一方第一个字符为句子的结束标记*/
+                if(first_word)
+                {
+                    first_word = false;
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        start_flag = true;
+                        ss_doc_str >> tmp_unuseful;
+                    }
+                }
+                if(is_stopsentence(doc_str_word))
+                {
+                    start_flag = true;
+                    ss_doc_str >> tmp_unuseful;
+                    //continue;
+                }
+                tmp_words.insert(doc_str_word);
+                line_sentence += doc_str_word;
+                if(start_flag = true)
+                {
+                    /*一个句子结束，加入到tmp_return*/
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        ss_doc_str >> tmp_unuseful;
+                        end_flag = true;
+                        tmp_return.push_back(std::make_pair(line_sentence, tmp_words));
+                        /*删除 line_sentence中存储的整个句子，为下次处理做准备*/
+                        line_sentence.erase(0);
+                        start_flag = false;
+                        end_flag = false;
+                    }
+                }
+            }
+            //!!std::vector<std::string> vec_words//待输出摘录的关键字
+            //!!std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!bool sentenceSearchWord(std::set<std::string> sentence, std::string word)
+            //!!不能采用默认的排序模版std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!std:vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //std::string summary = "文章摘要：";
+            char* summary = "文章摘要：";
+            char tmp_summary[128];
+            sprintf(tmp_summary, "..........\n第 %d 篇\n%s\n..........\n", docidSummary, summary);
+            summary = tmp_summary;
+            std::string summarySentences;
+            //!!函数名：getSummary(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+            int summary_cnt = 0;
+            for(auto it_search:vec_words)
+            {
+                for(auto it_sentence: tmp_return)
+                {
+                    if(sentenceSearchWord(it_sentence.second, it_search))
+                    {
+                        summary_cnt++;
+                        summarySentences += it_sentence.first;
+                        summarySentences += "\n";
+
+                        if(summary_cnt >= maxSummarySize)
+                        {
+                            break;
+                        }
+                    }
+
+                }
+            }
+            /*输出有换行符*/
+            if(summarySentences[summarySentences.size()-1] != '\n')
+            {
+                summarySentences += "\n";
+            }
+            summarySentences = summary + summarySentences;
+            //return tmp_return;
+            return summarySentences;
+        }
+
+#if 0
+        std::string backup_getSummary_unused(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+            /*vec_words为待查询的摘要的关键单词，必须确保单词在搜索序列中出现的顺序*/
+            /*maxSummarySize为返回的查询文章的行数*/
+        {
+            /*打开offset.lib文件*/
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            std::ifstream input_offset("./test_generate_page/new_offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            std::string line_offset;
+
+            /*提取offset.lib文件中的数据*/
+            std::map<int, std::pair<int, int> > tmp_map_offset;//用于存放offset.lib的结果
+            while(getline(input_offset, line_offset))
+            {
+                //std::cout<<"getline(input_offset, line_offset)"<<std::endl;
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+
+                std::stringstream ss_offset(line_offset);
+                while(ss_offset >> num_str >> offset_str >> size_str)
+                {
+                    /*将提取出的字符串转换为数字以便于数值计算*/
+                    int num_int = atoi(num_str.c_str());
+                    int offset_int = atoi(offset_str.c_str());
+                    int size_int = atoi(size_str.c_str());
+                    tmp_map_offset[num_int] = std::make_pair(offset_int, size_int);
+                }
+            }
+            std::cout<<"tmp_map_offset.size="<<tmp_map_offset.size()<<std::endl;
+            auto it_find_doc = tmp_map_offset.find(docidSummary);
+            if(it_find_doc == tmp_map_offset.end())
+            {
+                std::cout<<"error: not found the docidSummary!"<<std::endl;
+                exit(-1);
+            }
+            int curr_offset = it_find_doc->second.first;
+            int curr_size = it_find_doc->second.second;
+
+            /*依据new_offset.lib便宜文件对new_ripepage.lib的文件进行提取*/
+            std::ifstream input_ripepage("./test_generate_page/new_ripepage.lib");
+            //std::ifstream input_ripepage("./generate_page/new_ripepage.lib");
+            if(!input_ripepage)
+            {
+                perror("input_ripepage(getSummary())");
+                exit(-1);
+            }
+            /*将开始读文件的位置置于offset.lib中对应的curr_offset处准备读取数据*/
+            input_ripepage.seekg(curr_offset, std::fstream::beg);
+            /*定位到该篇文章的结尾处，作为读入结束的标记*/
+            int curr_end_mark = curr_offset + curr_size;
+
+            std::string curr_content;
+            std::string real_curr_content;
+            std::string line_content;
+
+            int content_size = 0;
+            std::vector<std::string> tmp_vec_content;
+            int line_cnt = 0;
+            //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+            //std::cout<<"curr_end_mark="<<curr_end_mark<<std::endl;
+            /*读取ripepage.lib，之所以+19是由于最后的<\docment><\doc>所占的字节数，没必要读取*/
+            while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+            {
+                /*line_cnt用于忽略前面的网页标记行*/
+                line_cnt++;
+                //std::cout<<"line_cnt="<<line_cnt<<std::endl;
+                //std::cout<<"getline(input_ripepage, line_content)"<<std::endl;
+                //std::cout<<curr_content<<std::endl;
+                //std::cout<<"input_ripepage.tellg()="<<input_ripepage.tellg()<<std::endl;
+                //!!8888888888 std::set<std::pair<std::string, std::set<std::string> > >
+                curr_content += line_content;//当前读取到的文件内容
+                content_size += line_content.size();//当前读取到的文件内容的大小
+                /*****88888不可删除
+                  if(content_size == size_int)
+                  {
+                  std::cout<<"content_size==size_int->break!(inside the MySplit.h)"<<std::endl;
+                  break;
+                  }
+                  */
+                //从第6行开始是文章的真实内容
+                if(line_cnt >= 6)
+                {
+                    std::string real_line_content;//文章的真实待读取内容
+                    //real_line_content += line_content;
+                    //for(auto it: line_content)
+                    std::stringstream ss(line_content);
+                    std::string word;
+                    while(ss >> word)
+                    {
+                        /*
+                           if(!isspace(it))//因为是对该篇文章进行分词，故必须去除空格，
+                        //以避免文章的上下行造成的不连续现象导致一个词可能出现的不连续的情况
+                        {
+                        real_line_content += it;//读取每一个汉字
+                        }
+                        */
+                        real_line_content += word;
+                    }
+                    //将读取到的内容（无空格），存放到一个vector里面（按行进行存放，不存在换行符）*/
+                    //std::vector<std::string> tmp_vec_content;
+                    /*当前文章的内容，无空格*/
+                    tmp_vec_content.push_back(real_line_content);
+                }
+            }
+            std::string docstr;
+            /*无换行符*/
+            //std::string wordSplit(std::string& str)
+            /*提取整篇文章*/
+            for(auto it_content: tmp_vec_content)
+            {
+                docstr += it_content;
+            }
+            /*对整篇文章进行分词，便于识别句子*/
+            std::string docstr_split = wordSplit(docstr);
+            //!!bool is_stopsentence(std::string aword)
+            bool start_flag = false;
+            bool end_flag = false;
+            std::stringstream ss_doc_str(docstr_split);
+            std::string doc_str_word;
+            std::string line_sentence;//存储临时句子
+            std::set<std::string> tmp_words;//存储临时单词
+            std::vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            bool first_word = false;
+            while(ss_doc_str >> doc_str_word)
+            {
+                /*
+                   if(doc_str_word == '\n')
+                   {
+                   ss_doc_str >> doc_str_word;
+                   }
+                   */
+                first_word = true;
+                std::string tmp_unuseful;
+                /*放在最前面一方第一个字符为句子的结束标记*/
+                if(first_word)
+                {
+                    first_word = false;
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        start_flag = true;
+                        ss_doc_str >> tmp_unuseful;
+                        //continue;
+                    }
+                }
+                if(is_stopsentence(doc_str_word))
+                {
+                    start_flag = true;
+                    ss_doc_str >> tmp_unuseful;
+                    //continue;
+                }
+                tmp_words.insert(doc_str_word);
+                line_sentence += doc_str_word;
+                if(start_flag = true)
+                {
+                    /*一个句子结束，加入到tmp_return*/
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        ss_doc_str >> tmp_unuseful;
+                        end_flag = true;
+                        tmp_return.push_back(std::make_pair(line_sentence, tmp_words));
+                        /*删除 line_sentence中存储的整个句子，为下次处理做准备*/
+                        line_sentence.erase(0);
+                        start_flag = false;
+                        end_flag = false;
+                    }
+                }
+            }
+            //!!std::vector<std::string> vec_words//待输出摘录的关键字
+            //!!std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!bool sentenceSearchWord(std::set<std::string> sentence, std::string word)
+            //!!不能采用默认的排序模版std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!std:vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //std::string summary = "文章摘要：";
+            char* summary = "文章摘要：";
+            char tmp_summary[128];
+            sprintf(tmp_summary, "...............\n第 %d 篇\n%s\n...............\n", docidSummary, summary);
+            summary = tmp_summary;
+            std::string summarySentences;
+            //!!函数名：getSummary(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+            int summary_cnt = 0;
+            for(auto it_search:vec_words)
+            {
+                for(auto it_sentence: tmp_return)
+                {
+                    if(sentenceSearchWord(it_sentence.second, it_search))
+                    {
+                        summary_cnt++;
+                        summarySentences += it_sentence.first;
+                        summarySentences += "\n";
+                        /*
+                           if(summarySentences.size() > 1)
+                           {
+                           summarySentences += "\n";
+                           }
+                           */
+                        if(summary_cnt >= maxSummarySize)
+                        {
+                            break;
+                        }
+                    }
+
+                }
+            }
+            /*输出有换行符*/
+            if(summarySentences[summarySentences.size()-1] != '\n')
+            {
+                summarySentences += "\n";
+            }
+            summarySentences = summary + summarySentences;
+            //return tmp_return;
+            return summarySentences;
+        }
+#endif
+        /**********trial***************/
+        std::string getSummary_mending(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+            /*vec_words为待查询的摘要的关键单词，必须确保单词在搜索序列中出现的顺序*/
+            /*maxSummarySize为返回的查询文章的行数*/
+        {
+#if 1//111111111111111111111111111111111111111111111111111
+            /*获取new_offset.lib和new_ripepage.lib*/
+            std::ifstream input_offset("./test_generate_page/new_offset.lib");
+            //!!std::ifstream input_offset("./test_generate_page/offset.lib");
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            std::string line_offset;
+            //99999std::map<int, std::pair<int, int> > tmp_map_offset;
+            int remove_cnt = 0;
+            while(getline(input_offset, line_offset))
+            {
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss(line_offset);
+                ss >> num_str;
+                ss >> offset_str;
+                ss >> size_str;
+
+                int num_int = atoi(num_str.c_str());
+                int offset_int = atoi(offset_str.c_str());
+                int size_int = atoi(size_str.c_str());
+                std::vector<std::string> tmp_vec_content;
+                int doc_num = 0;
+                remove_cnt++;
+                std::ifstream input_ripepage("./test_generate_page/ripepage.lib");
+                //std::ifstream input_ripepage("./generate_page/ripepage.lib");
+                if(!input_ripepage)
+                {
+                    perror("input_ripepage");
+                    exit(-1);
+                }
+                input_ripepage.seekg(offset_int, std::fstream::beg);
+                int curr_end_mark = offset_int + size_int;
+                std::string curr_content;
+                std::string real_curr_content;
+                std::string line_content;
+
+                int content_size = 0;
+                //std::vector<std::string> tmp_vec_content;
+                int line_cnt = 0;
+                while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+                    //while(getline(input_ripepage, line_content) && (input_ripepage.tellg()<=curr_end_mark))
+                {
+                    line_cnt++;
+                    curr_content += line_content;
+                    content_size += curr_content.size();
+                    /*
+                       if(content_size == size_int)
+                       {
+                       std::cout<<"content_size==size_int->break!!!!(inside MyRemoveDup.h)!!!"<<std::endl;
+                       break;
+                       }
+                       */
+                    std::string real_line_content;
+#if 0
+                    if(line_cnt == 6)
+                    {
+                        std::cout<<"第6行："<<line_content<<std::endl;
+                    }
+#endif
+                    if(line_cnt >= 6)
+                    {
+
+
+                        for(auto it: line_content)
+                        {
+                            real_line_content += it;
+                            /*
+                               if(!isspace(it))
+                               {
+                               real_line_content += it;
+                               }
+                               */
+                        }
+                        //tmp_vec_content.push_back(real_line_content);
+                        /*ripepage.lib中的第二行是<docid> id </docid>，new_offset.lib要求序号恢复连续
+                         * 所以极为有必要对id进行重置
+                         */
+                        real_curr_content += line_content;
+                        /*不要忘记加入空行，否则很难看*/
+                        if(input_ripepage.tellg()<curr_end_mark)
+                        {
+                            real_curr_content += "\n";//最后一行不要加 
+                        }
+                    }
+                    if(line_cnt == 6)
+                    {
+                        std::cout<<"第6行："<<line_content<<std::endl;
+                    }
+                }
+                //!!显示文章内容
+                if(remove_cnt == 8)
+                {
+                    std::cout<<"real_curr_content: as following...第八篇\n"<<real_curr_content<<std::endl;
+                }
+                tmp_vec_content.push_back(real_curr_content);//整篇文章一次性加入
+                //std::map<int, std::vector<std::string> > m_map_stoplist;
+            }
+#endif
+#if 0
+            while(1);
+            /*************华丽丽的分割线**************/
+            //std::ifstream input_offset("./generate_page/offset.lib");
+            std::ifstream input_offset("./test_generate_page/new_offset.lib");
+            if(!input_offset)
+            {
+                perror("input_offset");
+                exit(-1);
+            }
+            std::string line_offset;
+            std::map<int, std::pair<int, int> > tmp_map_offset;//用于存放new_offset.lib的结果
+            while(getline(input_offset, line_offset))
+            {
+                std::string num_str;
+                std::string offset_str;
+                std::string size_str;
+                std::stringstream ss_offset(line_offset);
+                while(ss_offset >> num_str >> offset_str >> size_str)
+                {
+                    int num_int = atoi(num_str.c_str());
+                    int offset_int = atoi(offset_str.c_str());
+                    int size_int = atoi(size_str.c_str());
+                    tmp_map_offset[num_int] = std::make_pair(offset_int, size_int);
+                }
+            }
+            auto it_find_doc = tmp_map_offset.find(docidSummary);
+            if(it_find_doc == tmp_map_offset.end())
+            {
+                std::cout<<"error: not found the docidSummary!"<<std::endl;
+                exit(-1);
+            }
+            int curr_offset = it_find_doc->second.first;
+            int curr_size = it_find_doc->second.second;
+            std::ifstream input_ripepage("./test_generate_page/new_ripepage.lib");
+            //std::ifstream input_ripepage("./generate_page/new_ripepage.lib");
+            if(!input_ripepage)
+            {
+                perror("input_ripepage(getSummary())");
+                exit(-1);
+            }
+            input_ripepage.seekg(curr_offset, std::fstream::beg);
+            std::cout<<"+++++++++++++++++++++++++++++in summary tellg="<<input_ripepage.tellg()<<std::endl;
+            int curr_end_mark = curr_offset + curr_size;
+            std::string curr_content;
+            std::string real_curr_content;
+            std::string line_content;
+
+            int content_size = 0;
+            std::vector<std::string> tmp_vec_content;
+            int line_cnt = 0;
+            while(getline(input_ripepage, line_content) && ((input_ripepage.tellg()+19)<=curr_end_mark))
+            {
+                if(line_cnt == 0)
+                {
+                    std::cout<<"line_content(第0行)："<<line_content<<std::endl;
+                }
+                line_cnt++;
+                //curr_content += line_content;//当前读取到的文件内容
+#if 0
+                /*66666666原始的读取形式：不可删除
+                  if(line_cnt >= 6)
+                  {
+                //real_line_content += line_content;
+                //for(auto it: line_content)
+                std::stringstream ss(line_content);
+                std::string word;
+                while(ss >> word)
+                {
+                //if(!isspace(it))//因为是对该篇文章进行分词，故必须去除空格，
+                //以避免文章的上下行造成的不连续现象导致一个词可能出现的不连续的情况
+                {
+                // real_line_content += it;//读取每一个汉字
+                }
+                real_line_content += word;
+                }
+                //将读取到的内容（无空格），存放到一个vector里面（按行进行存放，不存在换行符）*/
+                //std::vector<std::string> tmp_vec_content;
+                //当前文章的内容，无空格
+                tmp_vec_content.push_back(real_line_content);
+            }
+#endif
+            if(line_cnt >= 6)
+            {
+                real_curr_content += line_content;
+                if(input_ripepage.tellg()<curr_end_mark)
+                {
+                    real_curr_content += "\n";//最后一行不要加 
+                }
+            }
+            if(line_cnt == 6)
+            {
+                std::cout<<"第6行："<<line_content<<std::endl;
+            }
+            }
+            std::cout<<"after while() linec_cnt="<<line_cnt<<std::endl;
+            //!!显示文章内容
+            /*
+               if(remove_cnt == 8)
+               {
+               std::cout<<"real_curr_content: as following...第八篇\n"<<real_curr_content<<std::endl;
+               }
+               */
+            tmp_vec_content.push_back(real_curr_content);//整篇文章一次性加入
+            std::cout<<"提取的文章为：\n"<<real_curr_content<<std::endl;
+            std::string docstr;
+            /*无换行符*/
+            //std::string wordSplit(std::string& str)
+            /*提取整篇文章*/
+            for(auto it_content: tmp_vec_content)
+            {
+                docstr += it_content;
+            }
+            /*对整篇文章进行分词，便于识别句子*/
+            std::string docstr_split = wordSplit(docstr);
+            //!!bool is_stopsentence(std::string aword)
+            bool start_flag = false;
+            bool end_flag = false;
+            std::stringstream ss_doc_str(docstr_split);
+            std::string doc_str_word;
+            std::string line_sentence;//存储临时句子
+            std::set<std::string> tmp_words;//存储临时单词
+            std::vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            bool first_word = false;
+            while(ss_doc_str >> doc_str_word)
+            {
+                /*
+                   if(doc_str_word == '\n')
+                   {
+                   ss_doc_str >> doc_str_word;
+                   }
+                   */
+                first_word = true;
+                std::string tmp_unuseful;
+                /*放在最前面一方第一个字符为句子的结束标记*/
+                if(first_word)
+                {
+                    first_word = false;
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        start_flag = true;
+                        ss_doc_str >> tmp_unuseful;
+                        //continue;
+                    }
+                }
+                if(is_stopsentence(doc_str_word))
+                {
+                    start_flag = true;
+                    ss_doc_str >> tmp_unuseful;
+                    //continue;
+                }
+                tmp_words.insert(doc_str_word);
+                line_sentence += doc_str_word;
+                if(start_flag = true)
+                {
+                    /*一个句子结束，加入到tmp_return*/
+                    if(is_stopsentence(doc_str_word))
+                    {
+                        ss_doc_str >> tmp_unuseful;
+                        end_flag = true;
+                        tmp_return.push_back(std::make_pair(line_sentence, tmp_words));
+                        /*删除 line_sentence中存储的整个句子，为下次处理做准备*/
+                        line_sentence.erase(0);
+                        start_flag = false;
+                        end_flag = false;
+                    }
+                }
+            }
+            //!!std::vector<std::string> vec_words//待输出摘录的关键字
+            //!!std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!bool sentenceSearchWord(std::set<std::string> sentence, std::string word)
+            //!!不能采用默认的排序模版std::set<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //!!std:vector<std::pair<std::string, std::set<std::string> > > tmp_return;
+            //std::string summary = "文章摘要：";
+            char* summary = "文章摘要：";
+            char tmp_summary[128];
+            sprintf(tmp_summary, "...............\n第 %d 篇\n%s\n...............\n", docidSummary, summary);
+            summary = tmp_summary;
+            std::string summarySentences;
+            //!!函数名：getSummary(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+            int summary_cnt = 0;
+            for(auto it_search:vec_words)
+            {
+                for(auto it_sentence: tmp_return)
+                {
+                    if(sentenceSearchWord(it_sentence.second, it_search))
+                    {
+                        summary_cnt++;
+                        summarySentences += it_sentence.first;
+                        summarySentences += "\n";
+                        /*
+                           if(summarySentences.size() > 1)
+                           {
+                           summarySentences += "\n";
+                           }
+                           */
+                        if(summary_cnt >= maxSummarySize)
+                        {
+                            break;
+                        }
+                    }
+
+                }
+            }
+            /*输出有换行符*/
+            if(summarySentences[summarySentences.size()-1] != '\n')
+            {
+                summarySentences += "\n";
+            }
+            summarySentences = summary + summarySentences;
+            //return tmp_return;
+            return summarySentences;
+#endif
+        }
+        //private:
+        /*判断是否是stopword*/
+        bool is_stopword(std::string aword)
+        {
+            //std::cout<<"calling is_stopword"<<std::endl;
+            std::ifstream input_stopList("./filedata/stopList_standard.txt");
+            if(!input_stopList)
+            {
+                perror("input_stopList");
+                exit(-1);
+            }
+            std::set<std::string> set_stopword;
+            std::string word;
+            //while(getline(input_stopList, word))
+            while(input_stopList >> word)
+            {
+                //std::cout<<word<<std::endl;
+                set_stopword.insert(word);
+            }
+            if(set_stopword.find(aword) == set_stopword.end())
+            {
+                return false;
+            }
+            return true;
+        }
+        bool is_stopsentence(std::string aword)
+        {
+            //std::cout<<"calling is_stopword"<<std::endl;
+            /*
+               std::set<std::string> set_stopsentence = {",", ".", "?", "!", ";", 
+               "，", "。", "？", "！", "；"};
+               */
+            std::set<std::string> set_stopsentence = {".", "?", "!", "。", "？", "！", "；", ";"};
+            if(set_stopsentence.find(aword) == set_stopsentence.end())
+            {
+                return false;
+            }
+            return true;
+        }
+        bool sentenceSearchWord(std::set<std::string> sentence_words, std::string word)
+        {
+            if(sentence_words.find(word) != sentence_words.end())
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+    private:
+        /*存放每篇文章的分词结果*/
+        std::map<int, std::vector<std::string> > m_map_stoplist;
+        std::map<int, std::vector<std::string> > new_m_map_stoplist;
+#if 0
+            const char * const JIEBA_DICT_FILE = "./jieba/cppjieba/dict/jieba.dict.utf8";
+            const char * const HMM_DICT_FILE = "./jieba/cppjieba/dict/hmm_model.utf8";
+            const char * const USER_DICT_FILE = "./jieba/cppjieba/dict/user.dict.utf8";
+#endif
+
+
+
+};
+#endif
+
+#if 0
+int main(void)
+{
+    MySplit mysplit;
+    //mysplit.pageSplit();
+    mysplit.extractNewPage();
+    std::string result = mysplit.getSummary_mending(int docidSummary, int maxSummarySize, std::vector<std::string> vec_words)
+
+#if 0
+        std::string word;
+    std::cout<<"Enter a word:";
+    std::cin>>word;
+    bool flag = mysplit.is_stopword(word);
+    if(flag)
+    {
+        std::cout<<"Congratulation! the word: "<<word<<" is find!!!!!"<<std::endl;
+    }
+    else
+    {
+        std::cout<<"error!! not found!"<<std::endl;
+    }
+#endif
+    return 0;
+}
+
+#endif

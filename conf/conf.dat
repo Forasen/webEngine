@@ -1,0 +1,5 @@
+dict ./filedata/dict.dat
+thread ./thread.dat
+ip 192.168.1.152
+port 8888
+@@@@@@dict ./dict.dat
